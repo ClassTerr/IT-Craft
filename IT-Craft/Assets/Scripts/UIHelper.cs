@@ -13,7 +13,7 @@ public class UIHelper : MonoBehaviour {
         slider = GetComponentInChildren<Slider>();
     }
 
-    // Update is called once per frame
+    // потихоньку подтягивает значение слайдера к целевому
     void Update () {
         slider.value += (TapManager.CurrentClickCount - slider.value) * 0.3f;
 	}

@@ -1,39 +1,15 @@
-﻿using UnityEngine;
+using System;
 using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnityStandardAssets.Effects;
 
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
 
-namespace UnitySampleAssets.SceneUtils
+namespace UnityStandardAssets.SceneUtils
 {
     public class ParticleSceneControls : MonoBehaviour
     {
-
-        public DemoParticleSystemList demoParticles;
-        public float distFromSurface = 0.5f;
-
-        public float multiply = 1;
-        public bool clearOnChange = false;
-        public Text titleGuiText;
-        public Transform demoCam;
-        public Text interactionGuiText;
-
-        public Button previousButton;
-        public Button nextButton;
-
-
-        private ParticleSystemMultiplier particleMultiplier;
-
-        private List<Transform> currentParticleList = new List<Transform>();
-
-        private Transform instance;
-        private static int selectedIndex = 0;
-        private Vector3 camOffsetVelocity = Vector3.zero;
-        private Vector3 lastPos;
-
         public enum Mode
         {
             Activate,
@@ -47,53 +23,89 @@ namespace UnitySampleAssets.SceneUtils
             Up
         }
 
-        private static DemoParticleSystem selected;
+
+        public DemoParticleSystemList demoParticles;
+        public float spawnOffset = 0.5f;
+        public float multiply = 1;
+        public bool clearOnChange = false;
+        public Text titleText;
+        public Transform sceneCamera;
+        public Text instructionText;
+        public Button previousButton;
+        public Button nextButton;
+        public GraphicRaycaster graphicRaycaster;
+        public EventSystem eventSystem;
+
+
+        private ParticleSystemMultiplier m_ParticleMultiplier;
+        private List<Transform> m_CurrentParticleList = new List<Transform>();
+        private Transform m_Instance;
+        private static int s_SelectedIndex = 0;
+        private Vector3 m_CamOffsetVelocity = Vector3.zero;
+        private Vector3 m_LastPos;
+        private static DemoParticleSystem s_Selected;
+
 
         private void Awake()
         {
-            Select(selectedIndex);
+            Select(s_SelectedIndex);
 
             previousButton.onClick.AddListener(Previous);
             nextButton.onClick.AddListener(Next);
         }
 
+
         private void OnDisable()
         {
-
-            previousButton.onClick.RemoveAllListeners();
-            previousButton.onClick.RemoveAllListeners();
+			previousButton.onClick.RemoveListener (Previous);
+			nextButton.onClick.RemoveListener (Next);
         }
+
 
         private void Previous()
         {
-            selectedIndex--;
-            if (selectedIndex == -1) selectedIndex = demoParticles.items.Length - 1;
-            Select(selectedIndex);
-
+            s_SelectedIndex--;
+            if (s_SelectedIndex == -1)
+            {
+                s_SelectedIndex = demoParticles.items.Length - 1;
+            }
+            Select(s_SelectedIndex);
         }
+
 
         public void Next()
         {
-            selectedIndex++;
-            if (selectedIndex == demoParticles.items.Length) selectedIndex = 0;
-            Select(selectedIndex);
-
+            s_SelectedIndex++;
+            if (s_SelectedIndex == demoParticles.items.Length)
+            {
+                s_SelectedIndex = 0;
+            }
+            Select(s_SelectedIndex);
         }
+
 
         private void Update()
         {
-            demoCam.localPosition = Vector3.SmoothDamp(demoCam.localPosition, Vector3.forward*-selected.camOffset,
-                                                       ref camOffsetVelocity, 1);
 
-            if (selected.mode == Mode.Activate)
+#if !MOBILE_INPUT
+            KeyboardInput();
+#endif
+
+
+
+            sceneCamera.localPosition = Vector3.SmoothDamp(sceneCamera.localPosition, Vector3.forward*-s_Selected.camOffset,
+                                                       ref m_CamOffsetVelocity, 1);
+
+            if (s_Selected.mode == Mode.Activate)
             {
                 // this is for a particle system that just needs activating, and needs no interaction (eg, duststorm)
                 return;
             }
 
+            if (CheckForGuiCollision()) return;
 
-            bool oneShotClick = (Input.GetMouseButtonDown(0) && selected.mode == Mode.Instantiate);
-            bool repeat = (Input.GetMouseButton(0) && selected.mode == Mode.Trail);
+            bool oneShotClick = (Input.GetMouseButtonDown(0) && s_Selected.mode == Mode.Instantiate);
+            bool repeat = (Input.GetMouseButton(0) && s_Selected.mode == Mode.Trail);
 
             if (oneShotClick || repeat)
             {
@@ -103,90 +115,111 @@ namespace UnitySampleAssets.SceneUtils
                 {
                     var rot = Quaternion.LookRotation(hit.normal);
 
-                    if (selected.align == AlignMode.Up) rot = Quaternion.identity;
-
-                    var pos = hit.point + hit.normal*distFromSurface;
-
-                    if ((pos - lastPos).magnitude > selected.minDist)
+                    if (s_Selected.align == AlignMode.Up)
                     {
+                        rot = Quaternion.identity;
+                    }
 
-                        if (selected.mode != Mode.Trail || instance == null)
+                    var pos = hit.point + hit.normal*spawnOffset;
+
+                    if ((pos - m_LastPos).magnitude > s_Selected.minDist)
+                    {
+                        if (s_Selected.mode != Mode.Trail || m_Instance == null)
                         {
+                            m_Instance = (Transform) Instantiate(s_Selected.transform, pos, rot);
 
-                            instance = (Transform) Instantiate(selected.transform, pos, rot);
-
-                            if (particleMultiplier != null)
+                            if (m_ParticleMultiplier != null)
                             {
-                                instance.GetComponent<ParticleSystemMultiplier>().multiplier = multiply;
+                                m_Instance.GetComponent<ParticleSystemMultiplier>().multiplier = multiply;
                             }
 
-                            currentParticleList.Add(instance);
+                            m_CurrentParticleList.Add(m_Instance);
 
-                            if (selected.maxCount > 0 && currentParticleList.Count > selected.maxCount)
+                            if (s_Selected.maxCount > 0 && m_CurrentParticleList.Count > s_Selected.maxCount)
                             {
-                                if (currentParticleList[0] != null)
+                                if (m_CurrentParticleList[0] != null)
                                 {
-                                    Destroy(currentParticleList[0].gameObject);
+                                    Destroy(m_CurrentParticleList[0].gameObject);
                                 }
-                                currentParticleList.RemoveAt(0);
-
+                                m_CurrentParticleList.RemoveAt(0);
                             }
-
                         }
                         else
                         {
-                            instance.position = pos;
-                            instance.rotation = rot;
+                            m_Instance.position = pos;
+                            m_Instance.rotation = rot;
                         }
 
-                        if (selected.mode == Mode.Trail)
+                        if (s_Selected.mode == Mode.Trail)
                         {
-                            instance.transform.GetComponent<ParticleSystem>().enableEmission = false;
-                            instance.transform.GetComponent<ParticleSystem>().Emit(1);
+                            var emission = m_Instance.transform.GetComponent<ParticleSystem>().emission;
+                            emission.enabled = false;
+                            m_Instance.transform.GetComponent<ParticleSystem>().Emit(1);
                         }
 
-                        instance.parent = hit.transform;
-                        lastPos = pos;
+                        m_Instance.parent = hit.transform;
+                        m_LastPos = pos;
                     }
-
                 }
             }
-
         }
 
 
+#if !MOBILE_INPUT
+        void KeyboardInput()
+        {
+            if(Input.GetKeyDown(KeyCode.LeftArrow))
+                Previous();
+
+            if (Input.GetKeyDown(KeyCode.RightArrow))
+                Next();
+        }
+#endif
+
+
+        bool CheckForGuiCollision()
+        {
+            PointerEventData eventData = new PointerEventData(eventSystem);
+            eventData.pressPosition = Input.mousePosition;
+            eventData.position = Input.mousePosition;
+
+            List<RaycastResult> list = new List<RaycastResult>();
+            graphicRaycaster.Raycast(eventData, list);
+            return list.Count > 0;
+        }
+
         private void Select(int i)
         {
-            selected = demoParticles.items[i];
-            instance = null;
+            s_Selected = demoParticles.items[i];
+            m_Instance = null;
             foreach (var otherEffect in demoParticles.items)
             {
-                if ((otherEffect != selected) && (otherEffect.mode == Mode.Activate))
+                if ((otherEffect != s_Selected) && (otherEffect.mode == Mode.Activate))
                 {
                     otherEffect.transform.gameObject.SetActive(false);
                 }
             }
-            if (selected.mode == Mode.Activate)
+            if (s_Selected.mode == Mode.Activate)
             {
-                selected.transform.gameObject.SetActive(true);
+                s_Selected.transform.gameObject.SetActive(true);
             }
-            particleMultiplier = selected.transform.GetComponent<ParticleSystemMultiplier>();
+            m_ParticleMultiplier = s_Selected.transform.GetComponent<ParticleSystemMultiplier>();
             multiply = 1;
             if (clearOnChange)
             {
-                while (currentParticleList.Count > 0)
+                while (m_CurrentParticleList.Count > 0)
                 {
-                    Destroy(currentParticleList[0].gameObject);
-                    currentParticleList.RemoveAt(0);
+                    Destroy(m_CurrentParticleList[0].gameObject);
+                    m_CurrentParticleList.RemoveAt(0);
                 }
             }
 
-            interactionGuiText.text = selected.instructionText;
-            titleGuiText.text = selected.transform.name;
+            instructionText.text = s_Selected.instructionText;
+            titleText.text = s_Selected.transform.name;
         }
 
 
-        [System.Serializable]
+        [Serializable]
         public class DemoParticleSystem
         {
             public Transform transform;
@@ -198,13 +231,10 @@ namespace UnitySampleAssets.SceneUtils
             public string instructionText;
         }
 
-        [System.Serializable]
+        [Serializable]
         public class DemoParticleSystemList
         {
             public DemoParticleSystem[] items;
         }
-
     }
 }
-
-

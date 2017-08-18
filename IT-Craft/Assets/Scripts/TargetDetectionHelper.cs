@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using Vuforia;
 
+
+//Обрабатывает события обнаружения/потери маркера вуфории
 public class TargetDetectionHelper : MonoBehaviour,
                                             ITrackableEventHandler
 {

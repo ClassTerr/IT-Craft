@@ -6,6 +6,9 @@ public class Trigger : MonoBehaviour {
     public GameObject hero;
 
     private Animator anim;
+
+    //Анимация для рыцаря в доме
+
 	// Use this for initialization
 	void Start () {
         anim = hero.GetComponent<Animator>();

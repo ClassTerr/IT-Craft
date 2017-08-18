@@ -9,8 +9,8 @@ EditorBuildSettings:
     path: Assets/Scenes/MainMenu.unity
     guid: 906f4deff3cc8834eb2dc2ee466a1812
   - enabled: 1
-    path: Assets/Scenes/AR scene.unity
+    path: Assets/Scenes/Blacksmith.unity
     guid: 9a13862255a3d854fad4d17e752ad3ec
   - enabled: 1
-    path: Assets/Scenes/3D Game.unity
+    path: Assets/Scenes/Deepspace.unity
     guid: 1e266fc74a0ce7a41ba804d2be86a3e7

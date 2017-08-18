@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using UnityStandardAssets.Characters.ThirdPerson;
+using UnityStandardAssets.CrossPlatformInput;
 
 public class Joystick : MonoBehaviour
 {
@@ -15,11 +16,31 @@ public class Joystick : MonoBehaviour
     private float lastAction = 0;
     private Rigidbody rigidbody;
 
+    private ThirdPersonCharacter m_Character; // A reference to the ThirdPersonCharacter on the object
+    private Transform m_Cam;                  // A reference to the main camera in the scenes transform
+    private Vector3 m_CamForward;             // The current forward direction of the camera
+    private Vector3 m_Move;
+    private bool m_Jump;                      // the world-relative desired move direction, calculated from the camForward and user input.
+
     private Animator anim = null;
 
     // Use this for initialization
     void Start()
     {
+        // get the transform of the main camera
+        if (Camera.allCameras.Length > 0)
+        {
+            m_Cam = Camera.allCameras[0].transform;
+        }
+        else
+        {
+            Debug.LogWarning(
+                "Warning: no main camera found. Third person character needs a Camera tagged \"MainCamera\", for camera-relative controls.", gameObject);
+            // we use self-relative controls in this case, which probably isn't what the user wants, but hey, we warned them!
+        }
+
+        // get the third person character ( this should never be null due to require component )
+        m_Character = player.GetComponent<ThirdPersonCharacter>();
         anim = player.GetComponent<Animator>();
         rigidbody = player.GetComponent<Rigidbody>();
     }
@@ -42,20 +63,24 @@ public class Joystick : MonoBehaviour
             //anim.applyRootMotion = false;
         }
     }
-    
+
     void Update()
     {
+        float speed = 0, turn = 0;
         CheckGroundStatus();
         if (player == null) return;
 
         Touch[] touches = Input.touches;
+
+        if (touches.Length == 0 && !Input.GetMouseButtonDown(0))
+        {
+            speed = turn = 0;
+        }
         
         if ((isGrounded && Input.GetMouseButtonDown(1) || 
             (touches.Length == 2 && touches[1].phase == TouchPhase.Began)))
         {
-            Vector3 v = rigidbody.velocity;
-            v.y = jumpPower;
-            rigidbody.velocity = v;
+            m_Jump = true;
             lastAction = Time.fixedTime;
         }
 
@@ -78,21 +103,42 @@ public class Joystick : MonoBehaviour
 
             Vector2 delta = new Vector2(endPos.x - startPos.x, endPos.y - startPos.y);
 
-            float speed = Mathf.Clamp(delta.y / maxDelta, 0, 1);
-            float turn = Mathf.Clamp(delta.x / maxDelta, -1, 1) / 2;
+            speed = Mathf.Clamp(delta.y / maxDelta, 0, 3);
+            turn = Mathf.Clamp(delta.x / maxDelta, -1, 1) / 2;
 
-            anim.SetFloat("Forward", speed, 0.2f, Time.deltaTime);
-            anim.SetFloat("Turn", turn, 0.2f, Time.deltaTime);
+            //CrossPlatformInputManager.SetAxis("Vertical", speed);
+            //CrossPlatformInputManager.SetAxis("Horisontal", turn);
+
+            //anim.SetFloat("Forward", speed, 0.2f, Time.deltaTime);
+            //anim.SetFloat("Turn", turn, 0.2f, Time.deltaTime);
             
-            player.transform.RotateAround(player.transform.position, Vector3.up, turn * Time.deltaTime * 180);
+            //player.transform.RotateAround(player.transform.position, Vector3.up, turn * Time.deltaTime * 180);
             lastAction = Time.fixedTime;
         }
         else
         {
-            anim.SetFloat("Forward", 0, 0.5f, Time.deltaTime);
-            anim.SetFloat("Turn", 0, 0.5f, Time.deltaTime);
+            //anim.SetFloat("Forward", 0, 0.5f, Time.deltaTime);
+            //anim.SetFloat("Turn", 0, 0.5f, Time.deltaTime);
         }
 
-        anim.SetBool("Crouch", Time.fixedTime - lastAction >= timeToCrouch);
+
+        bool crouch = Time.fixedTime - lastAction >= timeToCrouch;
+
+        // calculate move direction to pass to character
+        if (m_Cam != null)
+        {
+            // calculate camera relative direction to move:
+            m_CamForward = Vector3.Scale(m_Cam.forward, new Vector3(1, 0, 1)).normalized;
+            m_Move = speed * m_CamForward + turn * m_Cam.right;
+        }
+        else
+        {
+            // we use world-relative directions in the case of no main camera
+            m_Move = speed * Vector3.forward + turn * Vector3.right;
+        }
+
+        // pass all parameters to the character control script
+        m_Character.Move(m_Move, crouch, m_Jump);
+        m_Jump = false;
     }
 }
