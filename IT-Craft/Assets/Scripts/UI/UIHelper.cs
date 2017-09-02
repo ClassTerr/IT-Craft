@@ -13,7 +13,7 @@ public class UIHelper : MonoBehaviour {
         slider = GetComponentInChildren<Slider>();
     }
 
-    // потихоньку подтягивает значение слайдера к целевому
+    // softly drag slider value to target value
     void Update () {
         slider.value += (TapManager.CurrentClickCount - slider.value) * 0.3f;
 	}

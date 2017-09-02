@@ -7,7 +7,7 @@ public class Trigger : MonoBehaviour {
 
     private Animator anim;
 
-    //Анимация для рыцаря в доме
+    // knight in home animation
 
 	// Use this for initialization
 	void Start () {

@@ -4,7 +4,7 @@ using UnityEngine;
 using Vuforia;
 
 
-//Обрабатывает события обнаружения/потери маркера вуфории
+// handles the events of detection / loss of the marker of the vuforia
 public class TargetDetectionHelper : MonoBehaviour,
                                             ITrackableEventHandler
 {

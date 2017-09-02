@@ -6,15 +6,15 @@ using UnityEngine.UI;
 public class TapManager : MonoBehaviour {
 
     /// <summary>
-    /// Максиимальный интервал времени между кликами для продолжения последовательности
+    /// Maximum time interval to continue tap combo
     /// </summary>
     public float doubleClickInterval = 0.7f;
     /// <summary>
-    /// Число тапов по голове для проигрывания анимации
+    /// Tap count required to play animation
     /// </summary>
     public int animationTapCount = 5;
     /// <summary>
-    /// Сколько раз юзер раз клацнул на голову (обнуляется при простое)
+    /// How many times user tapped on head (turn to zero on idle)
     /// </summary>
     public static int CurrentClickCount = 0;
     public ParticleSystem bloodParticle = null;
@@ -39,7 +39,7 @@ public class TapManager : MonoBehaviour {
 
         RaycastHit hit;
 
-        // если пользователь долго не клацал на голову
+        // If user do not touch head for long time
         if (Time.fixedTime - prevTime > doubleClickInterval)
         {
                 CurrentClickCount = 0;
@@ -48,18 +48,18 @@ public class TapManager : MonoBehaviour {
 
         if (Input.GetMouseButtonDown(0))
         {
-            // пользователь нажал на экран
+            // user tapped on screen
             if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit))
             {
                 if (hit.collider == null || hit.collider.gameObject == null)
                     return;
 
-                // если попал на голову
+                // if head have been hitted
                 if (hit.collider.gameObject.name == "HeadColliderCapsule")
                 {
-                    //играть анимацию, если попал 5 раз подряд
                     if (CurrentClickCount < 5)
                     {
+						// play animation
                         CurrentClickCount++;
                         prevTime = Time.fixedTime;
 
@@ -69,11 +69,11 @@ public class TapManager : MonoBehaviour {
                         }
                     }
 
-                    //Play particles
+                    // play particles
                     Transform from = hit.collider.gameObject.transform;
                     Quaternion q = from.rotation;
                     Vector3 to = hit.point;
-                    // направляем партиклы из центра головы
+                    // direct the partics from the center of the head
                     from.LookAt(to);
 
                     ParticleSystem particle = Instantiate(bloodParticle, hit.point, from.rotation);

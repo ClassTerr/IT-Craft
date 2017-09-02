@@ -4,13 +4,13 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class SceneLoadHelper : MonoBehaviour {
-    //Загружает сцену с нужным индексом
+    //Load scene with specified index
     public void LoadScene(int index)
     {
         SceneManager.LoadScene(index);
     }
 
-    //Загружает сцену с нужным именем
+    //Load scene with specified name
     public void LoadScene(string name)
     {
         SceneManager.LoadScene(name);
